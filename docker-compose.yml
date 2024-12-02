@@ -1,0 +1,101 @@
+version: '3.8'
+services:
+  spark-master:
+    image: bitnami/spark:latest
+    container_name: spark-master
+    environment:
+      - SPARK_MODE=master
+    ports:
+      - "7077:7077"   # Spark master port
+      - "8080:8080"   # Spark web UI port
+    networks:
+      - spark-network
+    volumes:
+      - spark-data:/opt/spark-data
+
+  spark-worker:
+    image: bitnami/spark:latest
+    container_name: spark-worker
+    environment:
+      - SPARK_MODE=worker
+      - SPARK_MASTER_URL=spark://spark-master:7077
+    depends_on:
+      - spark-master
+    ports:
+      - "8081:8081"   # Spark worker web UI port
+    networks:
+      - spark-network
+
+  spark-submit:
+    image: bitnami/spark:latest
+    container_name: spark-submit
+    user: root
+    depends_on:
+      - spark-master
+    environment:
+      - SPARK_MASTER_URL=spark://spark-master:7077
+      # - AWS_ACCESS_KEY_ID=AKIAYS2NTSMZGRBMCRET
+      # - AWS_SECRET_ACCESS_KEY=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
+      # - AWS_DEFAULT_REGION=us-east-2
+    volumes:
+      - ./scripts:/opt/spark-apps
+      - ~/.aws:/root/.aws:ro   
+      - ./jars:/opt/spark/jars
+      - /tmp/spark-temp:/tmp
+    # command: >
+      # bash -c "pip install boto3 && pip install pandas && apt-get install awscli -y
+      # && /opt/bitnami/spark/bin/spark-submit
+      # --packages org.apache.spark:spark-sql-kafka-0-10_2.12:3.1.2,com.audienceproject:spark-dynamodb_2.12:1.1.2
+      # --jars /opt/spark/jars/spark-dynamodb_2.12-1.1.2.jar,/opt/spark/jars/aws-java-sdk-1.11.1000.jar
+      # /opt/spark-apps/kafka_spark_dynamodb.py"
+    networks:
+      - spark-network
+
+
+
+  kafka:
+    image: confluentinc/cp-kafka:latest
+    container_name: kafka
+    environment:
+      KAFKA_BROKER_ID: 1
+      KAFKA_ZOOKEEPER_CONNECT: zookeeper:2181
+      KAFKA_ADVERTISED_LISTENERS: INTERNAL://kafka:9092,EXTERNAL://localhost:9093
+      KAFKA_LISTENERS: INTERNAL://0.0.0.0:9092,EXTERNAL://0.0.0.0:9093
+      KAFKA_LISTENER_SECURITY_PROTOCOL_MAP: INTERNAL:PLAINTEXT,EXTERNAL:PLAINTEXT
+      KAFKA_INTER_BROKER_LISTENER_NAME: INTERNAL
+    ports:
+      - "9092:9092"  # For internal Docker network communication
+      - "9093:9093"  # For external access from the host
+    depends_on:
+      - zookeeper
+    networks:
+      - spark-network
+
+
+  zookeeper:
+    image: confluentinc/cp-zookeeper:latest
+    container_name: zookeeper
+    environment:
+      ZOOKEEPER_CLIENT_PORT: 2181
+    ports:
+      - "2181:2181"
+    networks:
+      - spark-network
+
+  kafka-ui:
+    image: provectuslabs/kafka-ui:latest
+    container_name: kafka-ui
+    ports:
+      - "8082:8080"   # Kafka UI
+    environment:
+      KAFKA_CLUSTERS_0_NAME: local
+      KAFKA_CLUSTERS_0_BOOTSTRAPSERVERS: kafka:9092
+    networks:
+      - spark-network
+
+volumes:
+  spark-data:
+
+networks:
+  spark-network:
+    driver: bridge
