@@ -34,9 +34,6 @@ services:
       - spark-master
     environment:
       - SPARK_MASTER_URL=spark://spark-master:7077
-      # - AWS_ACCESS_KEY_ID=AKIAYS2NTSMZGRBMCRET
-      # - AWS_SECRET_ACCESS_KEY=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
-      # - AWS_DEFAULT_REGION=us-east-2
     volumes:
       - ./scripts:/opt/spark-apps
       - ~/.aws:/root/.aws:ro   
