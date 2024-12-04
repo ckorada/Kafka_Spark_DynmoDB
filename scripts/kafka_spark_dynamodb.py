@@ -70,7 +70,7 @@ def write_to_dynamodb(batch_df, batch_id):
     # Create DynamoDB client
     dynamodb = boto3.resource('dynamodb', region_name='us-east-2')  # Use your AWS region
     print(dynamodb);
-    table = dynamodb.Table('StockData')
+    table = dynamodb.Table('StockDataAnalysis')
 
     # Convert the Spark DataFrame to a Pandas DataFrame for easier processing
     pandas_df = batch_df.toPandas()
@@ -79,9 +79,11 @@ def write_to_dynamodb(batch_df, batch_id):
     for index, row in pandas_df.iterrows():
         print(i);
         i+=1
+        composite_key = f"{row['Date']}_{row['topic']}"
         # Convert float values to Decimal
         table.put_item(
             Item={
+                'timestamp_topic': composite_key,
                 'timestamp': row['Date'],
                 'open_price': Decimal(str(row['Open'])),
                 'close_price': Decimal(str(row['Close'])),
@@ -104,4 +106,5 @@ twitter_query = twitter_parsed_data.writeStream \
     .start()
 
 
+twitter_query.awaitTermination()
 apple_query.awaitTermination()
